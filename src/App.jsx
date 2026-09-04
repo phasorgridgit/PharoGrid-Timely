@@ -29,6 +29,8 @@ export default function App() {
   const [employeeName, setEmployeeName] = useState(null);
   const [employeeError, setEmployeeError] = useState(null);
   const [page, setPage] = useState("dashboard");
+  const [signInLoading, setSignInLoading] = useState(false);
+  const [signInError, setSignInError] = useState(null);
 
   useEffect(() => {
     if (isMockMode) {
@@ -37,10 +39,26 @@ export default function App() {
       setAccount({ signedIn: true, username: "demo@phasorgrid.local (mock mode)" });
       return;
     }
+
+    // Microsoft completes authentication in the system browser. The Electron
+    // main process sends this event as soon as the localhost callback is
+    // received, so the Timely window can immediately leave the sign-in screen.
+    const unsubscribe = window.workhub?.onAuthSuccess?.((result) => {
+      resetCurrentEmployeeCache();
+      setSignInError(null);
+      setSignInLoading(false);
+      setPage("dashboard");
+      setAccount({ signedIn: true, username: result?.account || undefined });
+    });
+
     window.workhub.getToken().then((token) => {
       // A cached token on launch means silent SSO worked — no prompt needed.
       if (token) setAccount({ signedIn: true });
+    }).catch((err) => {
+      console.error("Silent authentication check failed:", err);
     });
+
+    return () => unsubscribe?.();
   }, []);
 
   useEffect(() => {
@@ -54,12 +72,27 @@ export default function App() {
     if (isMockMode) {
       resetCurrentEmployeeCache();
       setEmployeeError(null);
+      setSignInError(null);
       setPage("dashboard");
       setAccount({ signedIn: true, username: "demo@phasorgrid.local (mock mode)" });
       return;
     }
-    const result = await window.workhub.login();
-    setAccount({ signedIn: true, username: result.account });
+
+    setSignInLoading(true);
+    setSignInError(null);
+
+    try {
+      const result = await window.workhub.login();
+      resetCurrentEmployeeCache();
+      setEmployeeError(null);
+      setPage("dashboard");
+      setAccount({ signedIn: true, username: result.account });
+    } catch (err) {
+      console.error("Microsoft sign-in failed:", err);
+      setSignInError(err?.message || "Microsoft sign-in could not be completed. Please try again.");
+    } finally {
+      setSignInLoading(false);
+    }
   }
 
   /**
@@ -109,10 +142,13 @@ export default function App() {
   if (!account) {
     return (
       <div className="signin-screen">
-        <Logo size={44} />
+        <Logo size={82} />
         <h1>PhasorGrid Timely</h1>
         <p>Sign in with your PhasorGrid Microsoft 365 account to continue.</p>
-        <button onClick={handleSignIn}>Sign in with Microsoft</button>
+        {signInError && <div className="signin-error">{signInError}</div>}
+        <button onClick={handleSignIn} disabled={signInLoading}>
+          {signInLoading ? "Signing in…" : "Sign in with Microsoft"}
+        </button>
       </div>
     );
   }

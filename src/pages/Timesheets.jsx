@@ -7,7 +7,6 @@ import ProjectPicker from "../components/ProjectPicker";
 import { todayUTC, localDateToUTC, parseDateOnly, formatDateOnly, addDays, weekdayIndex, startOfWeek, isSameDay, formatLongDate, formatShortDate, formatShortDateWithYear } from "../lib/dateUtils";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const TEMPLATE_KEY = "workhub_timesheet_template";
 
 // A timesheet row is a (project, task) pair. TaskName is "" when no task
 // was selected for that row — every row still keys/dedupes correctly since
@@ -70,7 +69,6 @@ export default function Timesheets() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [modal, setModal] = useState(null); // { projectName, taskName, dayIndex, entry? }
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
   const { start, end } = getWeekBounds(anchor);
@@ -182,80 +180,6 @@ export default function Timesheets() {
     }
   }
 
-  async function copyLastWeek() {
-    setBusy(true);
-    setError("");
-    try {
-      const lastStart = addDays(start, -7);
-      const lastEnd = addDays(end, -7);
-      const lastWeekEntries = await getMyEntries({ startDate: toDateStr(lastStart), endDate: toDateStr(lastEnd) });
-
-      await Promise.all(
-        lastWeekEntries.map((e) => {
-          const d = addDays(parseDateOnly(e.Date), 7);
-          return addEntry({
-            description: e.Title,
-            projectName: e.ProjectName,
-            clientName: e.ClientName,
-            taskName: e.TaskName,
-            date: d,
-            hours: e.Hours,
-            billable: e.Billable,
-          });
-        })
-      );
-      await refresh();
-      setNotice(`Copied ${lastWeekEntries.length} entries from last week.`);
-    } catch (err) {
-      setError(err.message || "Couldn't copy last week.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function saveAsTemplate() {
-    const template = entries.map((e) => ({
-      projectName: e.ProjectName,
-      taskName: e.TaskName,
-      description: e.Title,
-      dayIndex: dayIndexOf(e.Date),
-      hours: e.Hours,
-      billable: e.Billable,
-    }));
-    window.localStorage.setItem(TEMPLATE_KEY, JSON.stringify(template));
-    setNotice(`Saved this week as a template (${template.length} entries).`);
-  }
-
-  async function applyTemplate() {
-    const raw = window.localStorage.getItem(TEMPLATE_KEY);
-    if (!raw) return setNotice("No saved template yet — use \"Save as template\" first.");
-    setBusy(true);
-    setError("");
-    try {
-      const template = JSON.parse(raw);
-      await Promise.all(
-        template.map((t) => {
-          const day = addDays(start, t.dayIndex);
-          return addEntry({
-            description: t.description,
-            projectName: t.projectName,
-            clientName: clientForProject(t.projectName),
-            taskName: t.taskName,
-            date: day,
-            hours: t.hours,
-            billable: t.billable,
-          });
-        })
-      );
-      await refresh();
-      setNotice("Template applied to this week.");
-    } catch (err) {
-      setError(err.message || "Couldn't apply the template.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const { range: weekRange, relative: weekRelative } = weekLabel(start, end);
 
   return (
@@ -287,7 +211,6 @@ export default function Timesheets() {
       )}
 
       {error && <div className="mock-banner" style={{ background: "var(--red-soft)", borderColor: "var(--red)", color: "var(--red)" }}>{error}</div>}
-      {notice && <div className="mock-banner" style={{ background: "var(--teal-soft)", borderColor: "var(--teal)", color: "var(--teal-deep)" }}>{notice}</div>}
 
       <div className="card">
         <table className="tsgrid">
@@ -392,13 +315,6 @@ export default function Timesheets() {
           </tfoot>
         </table>
 
-        {isOwnTimesheet && (
-          <div className="btn-row" style={{ marginTop: 16 }}>
-            <button className="btn btn-outline btn-sm" onClick={copyLastWeek} disabled={busy}>{busy ? "Working…" : "Copy last week"}</button>
-            <button className="btn btn-outline btn-sm" onClick={saveAsTemplate}>Save as template</button>
-            <button className="btn btn-outline btn-sm" onClick={applyTemplate} disabled={busy}>Apply template</button>
-          </div>
-        )}
       </div>
 
       {modal && (

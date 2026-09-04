@@ -20,10 +20,13 @@ button{ font-family:inherit; cursor:pointer; }
 input,select{ font-family:inherit; }
 
 /* ---- sign-in ---- */
-.signin-screen{ height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:var(--ink); color:#fff; }
-.signin-screen h1{ font-family:'Space Grotesk'; font-size:26px; }
-.signin-screen p{ color:#9DB0C0; font-size:13px; }
-.signin-screen button{ background:var(--gold); border:none; padding:12px 24px; border-radius:8px; font-weight:700; font-size:14px; margin-top:8px; }
+.signin-screen{ height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:var(--ink); color:#fff; padding:24px; box-sizing:border-box; }
+.signin-screen .logomark{ width:82px; height:82px; object-fit:contain; border-radius:18px; margin-bottom:2px; }
+.signin-screen h1{ font-family:'Space Grotesk'; font-size:26px; margin:0; }
+.signin-screen p{ color:#9DB0C0; font-size:13px; margin:0; text-align:center; }
+.signin-screen button{ background:var(--gold); border:none; padding:12px 24px; border-radius:8px; font-weight:700; font-size:14px; margin-top:8px; min-width:190px; }
+.signin-screen button:disabled{ opacity:.65; cursor:wait; }
+.signin-error{ max-width:440px; padding:10px 14px; border:1px solid rgba(255,100,100,.35); border-radius:8px; background:rgba(255,80,80,.08); color:#ffb4b4; font-size:12px; text-align:center; line-height:1.45; }
 
 /* ---- shell ---- */
 .shell{ display:flex; flex-direction:column; height:100vh; }

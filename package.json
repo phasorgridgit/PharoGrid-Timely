@@ -1,6 +1,6 @@
 {
   "name": "phasorgrid-timely",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "PhasorGrid Timely — time tracking, timesheets, billing and analytics backed by Microsoft Graph (SharePoint + OneDrive)",
   "main": "electron/main.js",
   "author": "PhasorGrid Engineering Ltd.",

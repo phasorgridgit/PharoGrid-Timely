@@ -47,19 +47,72 @@ const GRAPH_SCOPES = [
 
 let cachedAccount = null;
 
+function focusMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  if (mainWindow.isMinimized()) mainWindow.restore();
+
+  // The Microsoft callback finishes in the system browser. Explicitly bring
+  // Timely back to the foreground so the user does not have to hunt for the
+  // Electron window after authentication succeeds.
+  mainWindow.show();
+  mainWindow.focus();
+  mainWindow.moveTop();
+
+  // Windows can sometimes keep focus on the browser for one event loop turn.
+  // Re-focus once more on the next tick for a reliable hand-off.
+  setTimeout(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.moveTop();
+  }, 100);
+}
+
 async function acquireTokenInteractive() {
   // Electron has no browser redirect surface, so MSAL Node opens a loopback
   // server on localhost and drives the system browser through the standard
-  // Microsoft sign-in page — the same page used by Outlook, Teams, etc.
+  // Microsoft sign-in page. Microsoft returns the authorization response to
+  // that localhost server, after which we immediately foreground Timely.
   const result = await pca.acquireTokenInteractive({
     scopes: GRAPH_SCOPES,
     openBrowser: async (url) => {
       await shell.openExternal(url);
     },
-    successTemplate: "<h1>Signed in — you can close this tab.</h1>",
-    errorTemplate: "<h1>Sign-in failed — you can close this tab and retry in Timely.</h1>"
+    successTemplate: `
+      <html>
+        <head><meta charset="utf-8"><title>Timely — Signed in</title></head>
+        <body style="font-family:Segoe UI,Arial,sans-serif;background:#0b1724;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+          <div style="text-align:center">
+            <h1 style="margin:0 0 10px">Signed in successfully</h1>
+            <p style="margin:0;color:#9db0c0">Return to Timely — this tab can be closed.</p>
+          </div>
+        </body>
+      </html>`,
+    errorTemplate: `
+      <html>
+        <head><meta charset="utf-8"><title>Timely — Sign-in failed</title></head>
+        <body style="font-family:Segoe UI,Arial,sans-serif;background:#0b1724;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+          <div style="text-align:center">
+            <h1 style="margin:0 0 10px">Sign-in failed</h1>
+            <p style="margin:0;color:#9db0c0">Return to Timely and try again.</p>
+          </div>
+        </body>
+      </html>`
   });
+
   cachedAccount = result.account;
+  focusMainWindow();
+
+  // Also notify the renderer explicitly. This is a second, event-based path
+  // back into the UI so the login screen updates even if the browser steals
+  // focus while the IPC login promise is resolving.
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("auth:success", {
+      account: result.account?.username || ""
+    });
+  }
+
   return result;
 }
 

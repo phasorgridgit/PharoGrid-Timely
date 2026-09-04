@@ -5,7 +5,7 @@ export default function Logo({ size = 30 }) {
     <img
       className="logomark"
       src={logoIcon}
-      alt="PhasorGrid"
+      alt="Timely"
       style={{ height: size, width: "auto", display: "block" }}
     />
   );

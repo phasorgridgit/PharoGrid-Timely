@@ -6,6 +6,11 @@ contextBridge.exposeInMainWorld("workhub", {
   login: () => ipcRenderer.invoke("auth:login"),
   getToken: () => ipcRenderer.invoke("auth:getToken"),
   logout: () => ipcRenderer.invoke("auth:logout"),
+  onAuthSuccess: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("auth:success", listener);
+    return () => ipcRenderer.removeListener("auth:success", listener);
+  },
 
   checkForUpdates: () => ipcRenderer.invoke("update:check"),
   quitAndInstallUpdate: () => ipcRenderer.invoke("update:quitAndInstall"),
